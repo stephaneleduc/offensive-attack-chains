@@ -35,11 +35,28 @@ Chaque dossier correspond à une machine ou un scénario et contient :
 - 📈 un résumé du chemin menant aux privilèges élevés (et autres objectifs)
 
 
+## 🔒 Anonymisation des environnements
+
+Afin de respecter les règles des plateformes utilisées et de privilégier une approche pédagogique :
+- les noms de machines sont anonymisés,
+- les adresses IP, domaines et identifiants réels sont masqués ou modifiés,
+- certains détails techniques spécifiques sont volontairement généralisés.
+
+L’objectif est de mettre en avant la logique des chaînes d’attaques et le raisonnement offensif, sans divulguer de solutions complètes ou reproductibles directement.
+
+
 ## ⚠️ Cadre légal et éthique
 
 Les démonstrations présentées sont réalisées exclusivement sur des plateformes de formation et des environnements autorisés (notamment Hack The Box).
 
 Ce contenu est publié à des fins éducatives et de recherche en cybersécurité uniquement.
+
+## ⭐ Convention utilisée
+
+TARGET_IP        → machine cible  
+ATTACKER_HOST    → machine attaquante  
+LAB.DOMAIN       → domaine de laboratoire  
+LOW_PRIV_USER    → utilisateur initial
 
 ---
 
