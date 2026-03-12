@@ -27,12 +27,14 @@ Les scénarios présentés mettent l’accent sur :
 
 ## 📂 Contenu du dépôt
 
-Chaque dossier correspond à une machine ou un scénario et contient :
-- 📖 une présentation du contexte
-- 🔗 la chaîne d’attaque complète
-- 🛠 les techniques et outils utilisés
-- 🧩 les mécanismes exploités
-- 📈 un résumé du chemin menant aux privilèges élevés (et autres objectifs)
+Les chaînes d’attaques sont organisées par système d’exploitation afin de refléter les différences méthodologiques entre environnements.
+
+Chaque scénario suit une structure identique :
+
+- Présentation du contexte : Description générale de l’environnement et de l’objectif.
+- Phase de découverte : Éléments observés menant à l’identification du chemin d’attaque.
+- Chaîne d’attaque : Commandes anonymisées accompagnées d’explications sur le raisonnement offensif.
+- Résumé : Synthèse du chemin d’attaque et des points clés ayant permis l’élévation de privilèges.
 
 
 ## 🔒 Anonymisation des environnements
